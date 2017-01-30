@@ -17,12 +17,12 @@
     overflow: auto;
 }
 
-ul li h1 {
+td h1 {
     font-size: 24px;
     margin-bottom: 15px;
 }
 
-ul li p {
+td p {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -30,16 +30,11 @@ ul li p {
     line-height: 20px;
 }
 
-ul {
-    list-style: none outside none;
-}
-
-ul li {
-    padding: 10px 15px;
-    overflow: hidden;
+tr {
+    height: 100px;
     background-color: #53A2BE;
 }
 
-ul li.even {
+tr.even {
     background-color: #1D84B5;
 }

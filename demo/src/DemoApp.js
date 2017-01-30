@@ -1,7 +1,6 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
 
-import VirtualList from '../../src/VirtualList';
+import Viewport from '../../src/Viewport';
 import Controls from './Controls';
 
 function itemFactory(item, compProps) {
@@ -12,13 +11,17 @@ function itemFactory(item, compProps) {
         style: { height: compProps.itemHeight + 'px' }
     };
     return (
-        <li { ...props }>
-            <h1>Item #{ item.number }</h1>
-            <p>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec placerat feugiat dapibus.
-                Morbi suscipit semper dolor non vulputate. Quisque ut risus ac ante finibus congue et vitae urna.
-            </p>
-        </li>
+        <tr { ...props }>
+            <td>
+				<h1>Item #{ item.number }</h1>
+			</td>
+            <td>
+				<p>
+					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec placerat feugiat dapibus.
+					Morbi suscipit semper dolor non vulputate. Quisque ut risus ac ante finibus congue et vitae urna.
+				</p>
+            </td>
+        </tr>
     );
 }
 
@@ -66,10 +69,25 @@ export default React.createClass({
     render() {
         var props = {
             items: this.items,
-            itemFactory,
             itemHeight: this.state.height,
             bufferSize: this.state.buffer,
-            viewport: this.state.viewport === Controls.VIEWPORT.CONTAINER ? this.refs.container : window
+            viewport: this.state.viewport === Controls.VIEWPORT.CONTAINER ? this.refs.container : window,
+            render: ({contentHeight, topOffset, items}) => {
+				var css = {
+					boxSizing: 'border-box',
+					height: contentHeight + 'px',
+					paddingTop: topOffset + 'px'
+				};
+                return (
+                	<div style={css}>
+						<table>
+							<tbody>
+								{items.map(itemFactory)}
+							</tbody>
+						</table>
+					</div>
+                );
+            }
         };
 
         return (
@@ -86,7 +104,7 @@ export default React.createClass({
                     />
                 <div id="list-wrapper">
                     <div ref="container" id="viewport" className={ this.state.viewport } >
-                        <VirtualList { ...props } />
+						<Viewport { ...props } />
                     </div>
                 </div>
             </div>
