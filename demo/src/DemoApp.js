@@ -72,22 +72,6 @@ export default React.createClass({
             itemHeight: this.state.height,
             bufferSize: this.state.buffer,
             viewport: this.state.viewport === Controls.VIEWPORT.CONTAINER ? this.refs.container : window,
-            render: ({contentHeight, topOffset, items}) => {
-				var css = {
-					boxSizing: 'border-box',
-					height: contentHeight + 'px',
-					paddingTop: topOffset + 'px'
-				};
-                return (
-                	<div style={css}>
-						<table>
-							<tbody>
-								{items.map(itemFactory)}
-							</tbody>
-						</table>
-					</div>
-                );
-            }
         };
 
         return (
@@ -104,7 +88,15 @@ export default React.createClass({
                     />
                 <div id="list-wrapper">
                     <div ref="container" id="viewport" className={ this.state.viewport } >
-						<Viewport { ...props } />
+						<Viewport { ...props }>
+							{items => (
+								<table>
+									<tbody>
+										{items.map(itemFactory)}
+									</tbody>
+								</table>
+							)}
+						</Viewport>
                     </div>
                 </div>
             </div>

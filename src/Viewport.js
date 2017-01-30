@@ -59,13 +59,25 @@ class Viewport extends React.Component {
 	}
 
 	render() {
-		return this.props.render(this.state);
+		const {items, contentHeight, topOffset} = this.state;
+		const style = {
+			boxSizing: 'border-box',
+			height: contentHeight + 'px',
+			paddingTop: topOffset + 'px'
+		};
+		return (
+			<div className="viewport">
+				<div className="viewport__content" style={style}>
+					{this.props.children(items)}
+				</div>
+			</div>
+		);
 	}
 }
 
 Viewport.propTypes = {
 	viewport: React.PropTypes.object,
-	render: React.PropTypes.func.isRequired,
+	children: React.PropTypes.func.isRequired,
 	items: React.PropTypes.array,
 	itemHeight: React.PropTypes.number.isRequired,
 	bufferSize: React.PropTypes.number,
