@@ -1,13 +1,15 @@
-import React from 'react';
+import React, {PropTypes} from 'react';
 import {findDOMNode} from 'react-dom';
 
 import ViewportDOM from './ViewportDOM';
 
+const nullViewport = {
+	dispose() {}
+};
+
 class Viewport extends React.Component {
 	constructor(props) {
 		super(props);
-
-		this.viewport = null;
 
 		this.state = {
 			contentHeight: 0,
@@ -15,7 +17,7 @@ class Viewport extends React.Component {
 			items: []
 		};
 
-		this.update = this.update.bind(this);
+		this.viewport = nullViewport;
 	}
 
 	componentDidMount() {
@@ -37,56 +39,63 @@ class Viewport extends React.Component {
 	}
 
 	makeViewport(props = this.props) {
-		if (this.viewport) {
-			this.viewport.dispose();
-		}
+		this.viewport.dispose();
+
 		this.viewport = ViewportDOM({
-			viewport: props.viewport,
+			viewport: this.resolveViewport(props.viewport),
 			content: findDOMNode(this),
-			update: this.update,
+			update: ({topOffset, contentHeight, start, end}) => {
+				this.setState({
+					topOffset,
+					contentHeight,
+					items: props.items.slice(start, end)
+				});
+			},
 			total: props.items.length,
 			itemHeight: props.itemHeight,
-			bufferSize: props.bufferSize,
+			bufferSize: props.bufferSize
 		});
 	}
 
-	update({topOffset, contentHeight, start, end}) {
-		this.setState({
-			topOffset,
-			contentHeight,
-			items: this.props.items.slice(start, end),
-		});
+	resolveViewport(selector) {
+		if (typeof selector === 'string') {
+			return document.querySelector(selector) || window;
+		}
+		return selector || window;
 	}
 
 	render() {
+		const {component: Component, componentProps, className} = this.props;
 		const {items, contentHeight, topOffset} = this.state;
 		const style = {
-			boxSizing: 'border-box',
-			height: contentHeight + 'px',
-			paddingTop: topOffset + 'px'
+			height: contentHeight,
+			paddingTop: topOffset
 		};
 		return (
-			<div className="viewport">
-				<div className="viewport__content" style={style}>
-					{this.props.children(items)}
-				</div>
-			</div>
+			<Component {...componentProps} className={className} style={style}>
+				{this.props.renderContent(items)}
+			</Component>
 		);
 	}
 }
 
 Viewport.propTypes = {
-	viewport: React.PropTypes.object,
-	children: React.PropTypes.func.isRequired,
-	items: React.PropTypes.array,
-	itemHeight: React.PropTypes.number.isRequired,
-	bufferSize: React.PropTypes.number,
+	component: PropTypes.any,
+	componentProps: PropTypes.object,
+	className: PropTypes.string,
+	viewport: PropTypes.any,
+	renderContent: PropTypes.func.isRequired,
+	items: PropTypes.array,
+	itemHeight: PropTypes.number.isRequired,
+	bufferSize: PropTypes.number
 };
 
 Viewport.defaultProps = {
+	component: 'div',
+	componentProps: {},
 	viewport: window,
 	items: [],
-	bufferSize: 0,
+	bufferSize: 0
 };
 
 export default Viewport;
