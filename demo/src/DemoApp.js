@@ -67,16 +67,17 @@ export default React.createClass({
     },
 
     render() {
+        const {items} = this;
         var props = {
-            items: this.items,
+            total: items.length,
             itemHeight: this.state.height,
             bufferSize: this.state.buffer,
             viewport: this.state.viewport === Controls.VIEWPORT.CONTAINER ? this.refs.container : window,
-            renderContent: (items) => {
+            renderContent: ({start, end}) => {
                 return (
                     <table>
                         <tbody>
-                            {items.map(itemFactory)}
+                            {items.slice(start, end).map(itemFactory)}
                         </tbody>
                     </table>
                 );
