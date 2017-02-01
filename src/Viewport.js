@@ -1,5 +1,7 @@
+import _ from 'lodash';
 import React, {PropTypes} from 'react';
 import {findDOMNode} from 'react-dom';
+import shallowCompare from 'react-addons-shallow-compare';
 
 import ViewportDOM from './ViewportDOM';
 
@@ -14,7 +16,8 @@ class Viewport extends React.Component {
 		this.state = {
 			contentHeight: 0,
 			topOffset: 0,
-			items: []
+			start: 0,
+			end: 0
 		};
 
 		this.viewport = nullViewport;
@@ -29,9 +32,7 @@ class Viewport extends React.Component {
 	}
 
 	shouldComponentUpdate(nextProps, nextState) {
-		return !(this.state.contentHeight === nextState.contentHeight
-				 && this.state.items.length === nextState.items.length
-				 && this.state.topOffset === nextState.topOffset);
+		return shallowCompare(this, nextProps, nextState);
 	}
 
 	componentWillReceiveProps(nextProps) {
@@ -48,32 +49,42 @@ class Viewport extends React.Component {
 				this.setState({
 					topOffset,
 					contentHeight,
-					items: props.items.slice(start, end)
+					start,
+					end
 				});
 			},
-			total: props.items.length,
+			total: props.total,
 			itemHeight: props.itemHeight,
 			bufferSize: props.bufferSize
 		});
 	}
 
-	resolveViewport(selector) {
-		if (typeof selector === 'string') {
-			return document.querySelector(selector) || window;
+	resolveViewport(target) {
+		if (!target) {
+			return this.context.viewport || window;
 		}
-		return selector || window;
+		if (_.isElement(target)) {
+			return target;
+		}
+		if (React.isValidElement(target)) {
+			return findDOMNode(target);
+		}
+		if (typeof target === 'string') {
+			return document.querySelector(target) || window;
+		}
+		return window;
 	}
 
 	render() {
 		const {component: Component, componentProps, className} = this.props;
-		const {items, contentHeight, topOffset} = this.state;
+		const {contentHeight, topOffset, start, end} = this.state;
 		const style = {
 			height: contentHeight,
 			paddingTop: topOffset
 		};
 		return (
 			<Component {...componentProps} className={className} style={style}>
-				{this.props.renderContent(items)}
+				{this.props.renderContent({start, end})}
 			</Component>
 		);
 	}
@@ -85,7 +96,7 @@ Viewport.propTypes = {
 	className: PropTypes.string,
 	viewport: PropTypes.any,
 	renderContent: PropTypes.func.isRequired,
-	items: PropTypes.array,
+	total: PropTypes.number.isRequired,
 	itemHeight: PropTypes.number.isRequired,
 	bufferSize: PropTypes.number
 };
@@ -93,9 +104,12 @@ Viewport.propTypes = {
 Viewport.defaultProps = {
 	component: 'div',
 	componentProps: {},
-	viewport: window,
-	items: [],
+	viewport: null, // means take from context automatically
 	bufferSize: 0
+};
+
+Viewport.contextTypes = {
+	viewport: PropTypes.any
 };
 
 export default Viewport;

@@ -35,15 +35,17 @@ export default function ViewportDOM({viewport = window, content, total, itemHeig
 		};
 	}
 
-	const requestFrame = rafDebounce(() => update(getState()));
+	const frame = rafDebounce(() => update(getState()));
+	const requestFrame = frame.request;
+
+	viewport.addEventListener('scroll', requestFrame);
+	const removeResizeListeners = addResizeListeners(viewport, requestFrame);
 
 	function dispose() {
 		viewport.removeEventListener('scroll', requestFrame);
-		viewport.removeEventListener('resize', requestFrame);
+		removeResizeListeners();
+		frame.cancel();
 	}
-
-	viewport.addEventListener('scroll', requestFrame);
-	viewport.addEventListener('resize', requestFrame);
 
 	// initialize
 	update(getState());
@@ -84,6 +86,20 @@ function getScrollTop(elem) {
 	return typeof elem.scrollTop === 'undefined' ? elem.scrollY || elem.pageYOffset : elem.scrollTop;
 }
 
+const requestAnimationFrameImpl =
+	window.requestAnimationFrame ||
+	window.mozRequestAnimationFrame ||
+	window.webkitRequestAnimationFrame ||
+	function requestAnimationFrameFallback(fn) {
+		return window.setTimeout(fn, 20);
+	};
+
+const cancelAnimationFrameImpl =
+	window.cancelAnimationFrame ||
+	window.mozCancelAnimationFrame ||
+	window.webkitCancelAnimationFrame ||
+	window.clearTimeout;
+
 function rafDebounce(fn) {
 	let scheduled = false;
 
@@ -92,10 +108,44 @@ function rafDebounce(fn) {
 		scheduled = false;
 	};
 
-	return () => {
-		if (!scheduled) {
-			requestAnimationFrame(fnWrapper);
-			scheduled = true;
+	return {
+		request: () => {
+			if (!scheduled) {
+				requestAnimationFrameImpl(fnWrapper);
+				scheduled = true;
+			}
+		},
+		cancel: () => {
+			cancelAnimationFrameImpl(fnWrapper);
 		}
+	};
+}
+
+function addResizeListeners(elem, fn) {
+	window.addEventListener('resize', fn);
+
+	if (elem === window) {
+		return () => {
+			window.removeEventListener('resize', fn);
+		};
+	}
+
+	function makeHash(el) {
+		return [el.style.width, el.style.height, el.clientWidth, el.clientHeight].join('');
+	}
+
+	let lastHash = '';
+
+	const intervalId = setInterval(() => {
+		const now = makeHash(elem);
+		if (now !== lastHash) {
+			lastHash = now;
+			fn();
+		}
+	}, 100);
+
+	return () => {
+		clearInterval(intervalId);
+		window.removeEventListener('resize', fn);
 	};
 }
