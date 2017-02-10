@@ -1,3 +1,23 @@
+const NOOP = () => {};
+
+// If a browser doesn't support the `options` argument to
+// add/removeEventListener, we need to check, otherwise we will
+// accidentally set `capture` with a truthy value.
+const PASSIVE = (() => {
+	if (typeof window === 'undefined') return false;
+	let hasSupport = false;
+	try {
+		document.createElement('div').addEventListener('test', NOOP, {
+			get passive() {
+				hasSupport = true;
+				return false;
+			}
+		});
+	} catch (err) {
+	}
+	return hasSupport;
+})() ? {passive: true} : false;
+
 export default function ViewportDOM({viewport = window, content, total, itemHeight, update, bufferSize = 0}) {
 	function getViewBox() {
 		const top = getScrollTop(viewport);
@@ -35,10 +55,10 @@ export default function ViewportDOM({viewport = window, content, total, itemHeig
 		};
 	}
 
-	const frame = rafDebounce(() => update(getState()));
+	const frame = requestFrameDebounce(() => update(getState()));
 	const requestFrame = frame.request;
 
-	viewport.addEventListener('scroll', requestFrame);
+	viewport.addEventListener('scroll', requestFrame, PASSIVE);
 	const removeResizeListeners = addResizeListeners(viewport, requestFrame);
 
 	function dispose() {
@@ -90,8 +110,8 @@ const requestAnimationFrameImpl =
 	window.requestAnimationFrame ||
 	window.mozRequestAnimationFrame ||
 	window.webkitRequestAnimationFrame ||
-	function requestAnimationFrameFallback(fn) {
-		return window.setTimeout(fn, 20);
+	function requestAnimationFramePolyfill(fn) {
+		return setTimeout(fn, 15);
 	};
 
 const cancelAnimationFrameImpl =
@@ -100,24 +120,28 @@ const cancelAnimationFrameImpl =
 	window.webkitCancelAnimationFrame ||
 	window.clearTimeout;
 
-function rafDebounce(fn) {
-	let scheduled = false;
+function requestFrameDebounce(fn) {
+	let pending = null;
 
-	const fnWrapper = () => {
+	const run = () => {
+		pending = null;
 		fn();
-		scheduled = false;
+	};
+
+	const cancel = () => {
+		if (pending) {
+			cancelAnimationFrameImpl(pending);
+			pending = null;
+		}
 	};
 
 	return {
 		request: () => {
-			if (!scheduled) {
-				requestAnimationFrameImpl(fnWrapper);
-				scheduled = true;
-			}
+			cancel();
+			pending = requestAnimationFrameImpl(run);
+			return cancel;
 		},
-		cancel: () => {
-			cancelAnimationFrameImpl(fnWrapper);
-		}
+		cancel
 	};
 }
 
@@ -130,22 +154,26 @@ function addResizeListeners(elem, fn) {
 		};
 	}
 
-	function makeHash(el) {
-		return [el.style.width, el.style.height, el.clientWidth, el.clientHeight].join('');
-	}
+	const removeElementListener = listenElementResize(elem, fn);
 
-	let lastHash = '';
+	return () => {
+		removeElementListener();
+		window.removeEventListener('resize', fn);
+	};
+}
+
+function listenElementResize(elem, fn) {
+	let lastHeight = 0;
 
 	const intervalId = setInterval(() => {
-		const now = makeHash(elem);
-		if (now !== lastHash) {
-			lastHash = now;
+		const now = getHeight(elem);
+		if (now !== lastHeight) {
+			lastHeight = now;
 			fn();
 		}
 	}, 100);
 
 	return () => {
 		clearInterval(intervalId);
-		window.removeEventListener('resize', fn);
 	};
 }

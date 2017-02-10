@@ -105,7 +105,7 @@ Viewport.defaultProps = {
 	component: 'div',
 	componentProps: {},
 	viewport: null, // means take from context automatically
-	bufferSize: 0
+	bufferSize: 10
 };
 
 Viewport.contextTypes = {
